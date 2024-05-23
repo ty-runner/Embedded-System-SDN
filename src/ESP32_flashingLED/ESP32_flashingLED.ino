@@ -1,15 +1,14 @@
-const int ledPin = 18;
+const int ledPin = 23;
 
 void setup() {
   // put your setup code here, to run once:
-  pinMode (ledPin, OUTPUT);
-
+  pinMode(ledPin, OUTPUT);
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   digitalWrite(ledPin, HIGH);
-  delay(540);
+  delay(1000);
   digitalWrite(ledPin, LOW);
-  delay(540);
+  delay(1000);
 }
