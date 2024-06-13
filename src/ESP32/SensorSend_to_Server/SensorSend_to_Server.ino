@@ -43,9 +43,7 @@ void setup() {
 
   udp.begin(localPort);
   Serial.printf("UDP server started on port %d\n", localPort);
-  if(three_way_handshake(broadcast, localPort)){
-    Serial.println("Link established.");
-  }
+
 }
 void calculate_broadcast_address(const char *ip, const char *mask, char *broadcast) {
     struct in_addr ip_addr, mask_addr, broadcast_addr;
@@ -61,7 +59,27 @@ void calculate_broadcast_address(const char *ip, const char *mask, char *broadca
     strcpy(broadcast, inet_ntoa(broadcast_addr));
 }
 long rand_num(){
-    return (random(1, 10000));
+    return (random(1, 99999));
+}
+void parse_packet(char* packet, long int* isn, char** message){
+  const char* isnKey = "";
+  const char* msgKey = "";
+
+  const char* isnPos = strstr(packet, isnKey);
+  const char* msgPos = strstr(packet, msgKey);
+
+  if (isnPos && msgPos){
+    isnPos += strlen(isnKey);
+    *isn = atoi(isnPos);
+
+    msgPos += strlen(msgKey);
+    *message = strdup(msgPos);
+  }
+  else{
+    *isn = -1;
+    *message = strdup("Invalid packet");
+  }
+
 }
 bool three_way_handshake(char* broadcast, const int localPort){
     /*
@@ -70,42 +88,46 @@ bool three_way_handshake(char* broadcast, const int localPort){
     3. Respond to SYN_ACK with ACK
     */
    //1.
-  for (int i = 0; i < 10; i++){
-    long isn = rand_num();
     char msg[23] = "SYN"; // + ISN
     char isn_str[20] = "";
-    sprintf(isn_str, "%ld", isn);
+    char* message;
+    long isn;
+    sprintf(isn_str, "%ld", rand_num());
     strcat(msg, isn_str);
     udp.beginPacket(broadcast, localPort);
     udp.write((const uint8_t*)msg, strlen(msg));
     udp.endPacket();
+    Serial.println(isn_str);
     delay(2000);
-  }
   //2.
-    // Listen for incoming UDP packets
-  // int packetSize = udp.parsePacket();
-  // if (packetSize) {
-  //   char incomingPacket[255];
-  //   int len = udp.read(incomingPacket, 255);
-  //   if (len > 0) {
-  //     incomingPacket[len] = 0;
-  //   }
-  //   Serial.printf("Received packet from %s: %s\n", udp.remoteIP().toString().c_str(), incomingPacket);
-  //   //split incoming packet into SYN-ACK, ISN
-  //   //incomingPacket, long ISN = split_packet(incomingPacket);
-  //   if(strcmp(incomingPacket, "SYN-ACK") == 0){
-  //     //3.
-  //     Serial.println("Received SYN-ACK");
-  //     char* msg = "ACK";
-  //     char isn_str[20] = "";
-  //     sprintf(isn_str, "%ld", 101); // change to actual isn + 1 later
-  //     strcat(msg, isn_str);
-  //     udp.write((const uint8_t*)msg, strlen(msg));
-  //     udp.endPacket();
-  //     return true;
-  //   }
-  //   return false;
-  // }
+  //Listen for incoming UDP packets
+  int packetSize = udp.parsePacket();
+  if (packetSize) {
+    char incomingPacket[1024];
+    int len = udp.read(incomingPacket, 1024);
+    if (len > 0) {
+      incomingPacket[len] = 0;
+    }
+    Serial.printf("Received packet from %s: %s\n", udp.remoteIP().toString().c_str(), incomingPacket);
+    //split incoming packet into SYN-ACK, ISN
+    //incomingPacket, long ISN = split_packet(incomingPacket);
+    parse_packet(incomingPacket, &isn, &message);
+    Serial.println(message);
+    Serial.println(isn);
+    if(strcmp(message, "SYN-ACK") == 0){
+      //3.
+      Serial.println("Received SYN-ACK");
+      char* msg = "ACK";
+      char isn_str[20] = "";
+      sprintf(isn_str, "%ld", isn + 1);
+      strcat(msg, isn_str);
+      udp.beginPacket(broadcast, localPort);
+      udp.write((const uint8_t*)msg, strlen(msg));
+      udp.endPacket();
+      return 1;
+    }
+    return 0;
+  }
   return 0;
 }
 void loop() {
@@ -121,4 +143,7 @@ void loop() {
   Serial.print("Temperature: ");
   Serial.print(t);
   Serial.println(" *F");
+  if(three_way_handshake(broadcast, localPort)){
+    Serial.println("Link established.");
+  }
 }
