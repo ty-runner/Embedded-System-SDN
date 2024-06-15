@@ -9,7 +9,7 @@ DHT dht(DHTPIN, DHTTYPE);
 
 const char* ssid = "MountVernon";
 const char* password = "DG860A9EC502";
-const char* serverName = "http://0.0.0.0:5000/";
+const char* serverName = "http://10.0.0.53:5000/data";
 
 void setup() {
   Serial.begin(115200);
@@ -43,5 +43,5 @@ void loop() {
     }
     http.end();
   }
-  delay(6000); // Send data every minute
+  delay(60000); // Send data every minute
 }
